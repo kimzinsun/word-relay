@@ -13,7 +13,7 @@ export function WordDisplay({ words }: WordDisplayProps) {
 				{words.map((word, index) => (
 					<div
 						key={index}
-						className="absolute transition-all duration-500 ease-in-out text-2xl"
+						className="absolute transition-all duration-500 ease-in-out text-3xl"
 						style={{
 							opacity:
 								index === words.length - 1
