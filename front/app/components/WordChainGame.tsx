@@ -1,4 +1,5 @@
 "use client";
+
 import { useState, useEffect } from "react";
 import { generateRandomNickname, isValidWord } from "../../utils/gameUtils";
 import { getCurrentUsers, incrementUsers, decrementUsers } from "../actions";
@@ -40,7 +41,7 @@ export default function WordChainGame() {
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
 		if (isValidWord(words[words.length - 1], inputWord)) {
-			setWords((prev) => [...prev.slice(-4), inputWord]);
+			setWords((prev) => [...prev, inputWord]);
 			setInputWord("");
 			setMessage("");
 		} else {
