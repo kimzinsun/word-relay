@@ -7,6 +7,8 @@ import time
 from datetime import datetime, timedelta
 import logging
 import json
+import unicodedata
+
 
 # 로깅 설정
 logging.basicConfig(
@@ -120,37 +122,70 @@ class DictionaryCrawler:
             logging.error(f"API request failed: {e}")
             raise
 
+    def is_pure_hangul(self, word):
+        """순수 한글로만 이루어진 단어인지 확인"""
+        for char in word:
+            if not ('\uAC00' <= char <= '\uD7A3' or  
+                    '\u1100' <= char <= '\u11FF' or   
+                    char == '-' or                    
+                    char == ' '):                     
+                return False
+        return True
+
+    def clean_word(self, word):
+        """단어 전처리"""
+        # 앞뒤 공백 제거
+        cleaned = word.strip()
+        # 하이픈 제거
+        cleaned = cleaned.replace("-", "")
+        # 중간 공백 제거
+        cleaned = cleaned.replace(" ", "")
+        return cleaned
+
     def process_word(self, word, definition):
         """단어 처리 및 데이터베이스 저장"""
-        word_without_hyphen = word.replace("-", "")
+        # 단어 전처리
+        cleaned_word = self.clean_word(word)
+        
+        # 필터링 조건 검사
+        if (len(cleaned_word) <= 1 or                
+            not self.is_pure_hangul(cleaned_word)):  
+            logging.info(f"Skipped word: {word} (length <= 1 or contains non-Hangul)")
+            return
+            
         try:
-            self.cursor.execute("SELECT COUNT(*) FROM dictionary WHERE word = %s", 
-                              (word_without_hyphen,))
+            # 중복 검사
+            self.cursor.execute(
+                "SELECT COUNT(*) FROM dictionary WHERE word = %s", 
+                (cleaned_word,)
+            )
+            
             if self.cursor.fetchone()[0] == 0:
+                # 새로운 단어 삽입
                 self.cursor.execute(
                     'INSERT INTO dictionary (word, definition) VALUES (%s, %s)',
-                    (word_without_hyphen, definition)
+                    (cleaned_word, definition)
                 )
                 self.conn.commit()
-                logging.info(f"Inserted: {word_without_hyphen}")
+                logging.info(f"Inserted: {cleaned_word}")
             else:
-                logging.info(f"Skipped duplicate: {word_without_hyphen}")
+                logging.info(f"Skipped duplicate: {cleaned_word}")
                 
         except mysql.connector.Error as e:
-            logging.error(f"Database error: {e}")
+            logging.error(f"Database error for word {word}: {e}")
             self.conn.rollback()
 
     def crawl(self):
         """메인 크롤링 프로세스"""
-        initial = ['ㄱ']  
-        
+        initial = ['ㄷ']  
+    
         try:
             for cho_idx, cho in enumerate(initial):
                 if cho_idx < self.progress['current_cho']:
                     continue
 
                 syllables = self.generate_hangul_syllables(cho)
-                
+            
                 for syl_idx, word in enumerate(syllables):
                     if (cho_idx == self.progress['current_cho'] and 
                         syl_idx < self.progress['current_syllable']):
@@ -161,11 +196,13 @@ class DictionaryCrawler:
                                    and syl_idx == self.progress['current_syllable'] 
                                    else 1)
 
+                    seen_words = set()  # 이미 처리한 단어를 추적
+
                     while True:
                         try:
                             params = {
                                 "key": self.api_key,
-                                "q": word,
+                                "q": word, 
                                 "req_type": "xml",
                                 "target": 1,
                                 "type1": ["word"],
@@ -180,23 +217,44 @@ class DictionaryCrawler:
 
                             response = self.make_api_request(params)
                             root = ET.fromstring(response.content)
-                            
-                            items = root.findall("./item")
-                            if not items:
-                                logging.info(f"No results for {word}")
+                        
+                            # 전체 결과 수 확인
+                            total_count = int(root.find('total').text) if root.find('total') is not None else 0
+                        
+                            # 현재 페이지에 결과가 없으면 종료
+                            if total_count == 0 or current_start > total_count:
+                                logging.info(f"No more results for {word} (total: {total_count})")
                                 break
+
+                            items = root.findall("./item")
+                            new_words_found = False
 
                             for item in items:
                                 word_elem = item.find('word')
-                                for sense in item.findall('sense'):
-                                    definition = sense.find('definition').text
-                                    self.process_word(word_elem.text, definition)
+                                if word_elem is not None and word_elem.text:
+                                    word_text = word_elem.text
 
-                            if len(items) < self.BATCH_SIZE:
+                                    # 이미 처리한 단어는 건너뛰기
+                                    if word_text in seen_words:
+                                        continue
+
+                                    seen_words.add(word_text)
+                                    new_words_found = True
+
+                                    for sense in item.findall('sense'):
+                                        definition = sense.find('definition').text
+                                        self.process_word(word_text, definition)
+
+                            # 새로운 단어가 없으면 종료
+                            if not new_words_found:
+                                logging.info(f"No new words found for {word} at page {current_start}")
+                                break
+
+                            if len(items) < self.BATCH_SIZE or current_start >= total_count:
                                 break
 
                             current_start += self.BATCH_SIZE
-                            
+
                             # 진행상황 업데이트
                             self.progress.update({
                                 'current_cho': cho_idx,
@@ -206,7 +264,7 @@ class DictionaryCrawler:
                             self.save_progress()
 
                         except Exception as e:
-                            logging.error(f"Error processing word {word}: {e}")
+                            logging.error(f"Error processing syllable {word}: {e}")
                             raise
 
         except KeyboardInterrupt:
