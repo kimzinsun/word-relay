@@ -44,7 +44,7 @@ class DictionaryCrawler:
 
     def setup_crawler_config(self):
         """크롤러 설정 초기화"""
-        self.MAX_REQUESTS_PER_DAY = 1000
+        self.MAX_REQUESTS_PER_DAY = 40000
         self.BATCH_SIZE = 100
         self.current_requests = 0
         self.last_request_date = None
@@ -177,7 +177,7 @@ class DictionaryCrawler:
 
     def crawl(self):
         """메인 크롤링 프로세스"""
-        initial = ['ㄷ']  
+        initial = ['ㄱ', 'ㄴ', 'ㄷ', 'ㄹ', 'ㅁ', 'ㅂ', 'ㅅ', 'ㅇ', 'ㅈ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ']
     
         try:
             for cho_idx, cho in enumerate(initial):
