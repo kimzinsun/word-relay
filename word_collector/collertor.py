@@ -21,7 +21,7 @@ class DictionaryCrawler:
     def __init__(self):
         load_dotenv()
         self.api_key = os.getenv("OPENDIT_ACCESS_KEY")
-        self.api_url = "https://opendict.korean.go.kr/api/search"
+        self.api_url = "https://stdict.korean.go.kr/api/search.do"
         self.setup_database()
         self.setup_crawler_config()
         self.create_tables()
