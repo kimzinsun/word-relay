@@ -11,7 +11,7 @@ import { useRankingsSSE } from "@/hooks/useRankingsSSE";
 const WEBSOCKET_URL = "ws://your-server-url/word-game";
 const SSE_URL = "http://your-server-url/rankings";
 
-export default function WordChainGame() {
+export default function WordRelay() {
 	const [inputWord, setInputWord] = useState("");
 	const [userCount, setUserCount] = useState(0);
 	const [darkMode, setDarkMode] = useState(false);
