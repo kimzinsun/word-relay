@@ -1,0 +1,24 @@
+spring:
+  application:
+    name: server
+
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  config:
+    import: optional:file:.env[.properties]
+
+mybatis:
+  mapper-locations: classpath*:mapper/*.xml
+  type-aliases-package: com.wordrelay.server.dto
+  configuration:
+    map-underscore-to-camel-case: true
+    use-generated-keys: true
+
+
+logging:
+  level:
+    org.springframework.jdbc.core: TRACE
+    com.wordrelay.server: DEBUG
