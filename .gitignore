@@ -2,4 +2,6 @@
 *.log
 progress.json
 
+dictionary_files/
+
 .idea
