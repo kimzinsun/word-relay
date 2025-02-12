@@ -1,10 +1,13 @@
 import mysql.connector
+from mysql.connector import Error
 from dotenv import load_dotenv
 import os
 import logging
 import pandas as pd
 import glob
 import re
+import time
+from functools import wraps
 
 # 로깅 설정
 logging.basicConfig(
@@ -12,6 +15,27 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
 )
+
+def retry_on_connection_error(max_retries=3, delay=1):
+    def decorator(func):
+        @wraps(func)
+        def wrapper(self, *args, **kwargs):
+            retries = 0
+            while retries < max_retries:
+                try:
+                    if not self.conn.is_connected():
+                        self.reconnect()
+                    return func(self, *args, **kwargs)
+                except (mysql.connector.Error, mysql.connector.errors.OperationalError) as e:
+                    retries += 1
+                    if retries == max_retries:
+                        raise
+                    logging.warning(f"Database connection error: {e}. Retrying... ({retries}/{max_retries})")
+                    time.sleep(delay)
+                    self.reconnect()
+            return None
+        return wrapper
+    return decorator
 
 class DictionaryProcessor:
     def __init__(self):
@@ -29,12 +53,28 @@ class DictionaryProcessor:
                 "host": os.getenv("DB_HOST"),
                 "port": os.getenv("DB_PORT"),
                 "database": os.getenv("DB_NAME"),
+                # 추가된 설정
+                "connect_timeout": 28800,  # 8시간
+                "pool_size": 5,
+                "pool_name": "dictionary_pool"
             }
             self.conn = mysql.connector.connect(**self.db_config)
             self.cursor = self.conn.cursor(buffered=True)
             logging.info("Database connection established")
         except Exception as e:
             logging.error(f"Database connection failed: {e}")
+            raise
+
+    def reconnect(self):
+        """데이터베이스 재연결"""
+        try:
+            if hasattr(self, 'conn'):
+                self.conn.close()
+            self.conn = mysql.connector.connect(**self.db_config)
+            self.cursor = self.conn.cursor(buffered=True)
+            logging.info("Database reconnection successful")
+        except Exception as e:
+            logging.error(f"Database reconnection failed: {e}")
             raise
 
     def setup_processor_config(self):
@@ -61,6 +101,7 @@ class DictionaryProcessor:
             "ㅎ": "dict_h",
         }
 
+    @retry_on_connection_error()
     def create_tables(self):
         """초성별 테이블 생성"""
         try:
@@ -140,24 +181,21 @@ class DictionaryProcessor:
                 return False
         return True
 
+    @retry_on_connection_error()
     def process_word(self, word, definition):
         """단어 처리 및 데이터베이스 저장"""
-        # 단어 전처리
         cleaned_word = self.clean_word(word)
 
-        # 필터링 조건 검사
         if not cleaned_word or len(cleaned_word) <= 1 or not self.is_pure_hangul(cleaned_word):
             logging.info(f"Skipped word: {word} (invalid or too short)")
             return
 
         try:
-            # 초성 추출
             initial = self.get_initial_consonant(cleaned_word)
             if initial not in self.CHOSUNG_TABLE_MAP:
                 logging.warning(f"Invalid initial consonant for word: {cleaned_word}")
                 return
 
-            # 해당 초성의 테이블명 가져오기
             table_name = self.CHOSUNG_TABLE_MAP[initial]
 
             # 중복 검사
@@ -168,7 +206,7 @@ class DictionaryProcessor:
                 # 새로운 단어 삽입
                 self.cursor.execute(
                     f"INSERT INTO {table_name} (word, definition) VALUES (%s, %s)",
-                    (cleaned_word, definition),
+                    (cleaned_word, self.clean_definition(definition)),
                 )
                 self.conn.commit()
                 logging.info(f"Inserted: {cleaned_word}")
@@ -178,12 +216,13 @@ class DictionaryProcessor:
         except mysql.connector.Error as e:
             logging.error(f"Database error for word {word}: {e}")
             self.conn.rollback()
+            raise
 
     def process_csv_file(self, csv_path):
         """단일 CSV 파일 처리 - 명사만 필터링하여 저장"""
         try:
             logging.info(f"Processing file: {csv_path}")
-            df = pd.read_csv(csv_path)
+            df = pd.read_csv(csv_path, encoding='utf-8')  # 인코딩 명시적 지정
             
             # '품사' 컬럼이 있는지 확인
             if '품사' not in df.columns:
@@ -196,6 +235,9 @@ class DictionaryProcessor:
             total_rows = len(df)
             processed = 0
 
+            # 디버깅을 위한 초성별 카운트
+            initial_counts = {}
+
             for index, row in df.iterrows():
                 try:
                     word = row['어휘']
@@ -204,9 +246,14 @@ class DictionaryProcessor:
                     if pd.isna(word) or pd.isna(definition):
                         continue
 
-                    # 뜻풀이에서 「1」, 「2」 등의 번호 제거하고 정리
-                    cleaned_definition = self.clean_definition(definition)
-                    self.process_word(word, cleaned_definition)
+                    # 초성 카운트 업데이트
+                    cleaned_word = self.clean_word(word)
+                    if cleaned_word:
+                        initial = self.get_initial_consonant(cleaned_word)
+                        if initial:
+                            initial_counts[initial] = initial_counts.get(initial, 0) + 1
+
+                    self.process_word(word, definition)
 
                     processed += 1
                     if processed % 1000 == 0:
@@ -216,6 +263,7 @@ class DictionaryProcessor:
                     logging.error(f"Error processing row {index} in {csv_path}: {e}")
                     continue
 
+            logging.info(f"초성별 단어 수: {initial_counts}")
             logging.info(f"Completed processing {processed}/{total_rows} nouns in {csv_path}")
 
         except Exception as e:
