@@ -1,9 +1,11 @@
 name: Java CI with Gradle
+
 on:
   push:
     branches: [ "main", "ci-cd" ]
   pull_request:
     branches: [ "main", "ci-cd" ]
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -40,5 +42,9 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.5'
       - name: Generate and submit dependency graph
         uses: gradle/actions/dependency-submission@v4
