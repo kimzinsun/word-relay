@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Word Relay Game</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    #gameInfo {
+      background: #f5f5f5;
+      padding: 15px;
+      border-radius: 5px;
+      margin-bottom: 20px;
+    }
+    #messages {
+      margin-top: 20px;
+      padding: 10px;
+      border: 1px solid #ddd;
+      height: 300px;
+      overflow-y: scroll;
+      border-radius: 5px;
+    }
+    .message {
+      padding: 8px;
+      margin: 5px 0;
+      border-radius: 4px;
+    }
+    .system-message {
+      background-color: #e8f5e9;
+    }
+    .user-message {
+      background-color: #e3f2fd;
+    }
+    #wordInput {
+      margin-top: 10px;
+      display: none;
+    }
+    #wordInput input {
+      padding: 10px;
+      width: 80%;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+    #wordInput button {
+      padding: 10px 20px;
+      margin-left: 10px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    #wordInput button:hover {
+      background-color: #45a049;
+    }
+  </style>
+</head>
+<body>
+<h1>Word Relay Game</h1>
+<div id="gameInfo">
+  <div id="nickname">닉네임: ~</div>
+  <div id="score">점수: 0</div>
+</div>
+<div id="messages"></div>
+<div id="wordInput">
+  <input type="text" id="messageInput" placeholder="단어를 입력하세요...">
+  <button id="sendMessageButton">입력</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.5.1/sockjs.min.js"></script>
+
+<script>
+  let socket;
+  let stompClient;
+  let sessionId;
+
+  // 브라우저 ID 관리
+  function getBrowserId() {
+    let browserId = localStorage.getItem('browserId');
+    if (!browserId) {
+      browserId = 'browser_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+      localStorage.setItem('browserId', browserId);
+    }
+    return browserId;
+  }
+
+  // 메시지 표시 함수
+  function appendMessage(message, type = 'system') {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message ${type}-message`;
+    messageDiv.textContent = message;
+    document.getElementById('messages').appendChild(messageDiv);
+    // 자동 스크롤
+    messages.scrollTop = messages.scrollHeight;
+  }
+
+  // 웹소켓 자동 연결
+  function connectWebSocket() {
+    socket = new SockJS('http://localhost:8080/ws/game');
+    stompClient = Stomp.over(socket);
+
+    stompClient.connect({}, function(frame) {
+      sessionId = frame.headers['session'];
+      document.getElementById('wordInput').style.display = 'block';
+
+      // 웰컴 메시지 구독
+      stompClient.subscribe('/user/queue/welcome', function(message) {
+        const welcomeData = JSON.parse(message.body);
+        document.getElementById('nickname').textContent = '닉네임: ' + welcomeData.nickname;
+        document.getElementById('score').textContent = '점수: ' + welcomeData.score;
+        appendMessage('게임에 접속했습니다. 환영합니다, ' + welcomeData.nickname + '님!');
+      });
+
+      // 게임 접속 메시지 전송
+      stompClient.send("/app/game.connect", {}, JSON.stringify({
+        browserId: getBrowserId()
+      }));
+    });
+  }
+
+  // 단어 입력
+  document.getElementById('sendMessageButton').onclick = function() {
+    const word = document.getElementById('messageInput').value.trim();
+    if (word === '') {
+      return;
+    }
+    stompClient.send("/app/game.word", {}, JSON.stringify({
+      sessionId: sessionId,
+      word: word
+    }));
+  };
+
+  // Enter 키로 단어 입력
+  document.getElementById('messageInput').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+      document.getElementById('sendMessageButton').click();
+    }
+  });
+
+  // 페이지 로드 시 자동 연결
+  window.onload = function() {
+    connectWebSocket();
+  };
+</script>
+</body>
+</html>
