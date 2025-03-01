@@ -9,37 +9,51 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: server
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
         with:
-          java-version: '17'
-          distribution: 'temurin'
-          cache: 'gradle'  # Gradle 캐싱 추가
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
 
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
+      - name: Build and push ARM64 Docker image
+        uses: docker/build-push-action@v4
         with:
-          gradle-home-cache-cleanup: true
+          context: server
+          platforms: linux/arm64
+          push: true
+          tags: wordrelayadmin/word-relay:latest
+          build-args: BASE_IMAGE=eclipse-temurin:17-jdk-alpine
 
-      - name: Run Tests
-        run: ./gradlew test
 
-      - name: Build with Gradle Wrapper
-        run: ./gradlew build
 
-      - name: Upload Build Artifacts
-        uses: actions/upload-artifact@v4
+  docker-deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to production
+        uses: appleboy/ssh-action@master
         with:
-          name: server-build
-          path: server/build/libs/*.jar
+          host: ${{ secrets.PRODUCTION_HOST }}
+          username: ${{ secrets.PRODUCTION_USERNAME }}
+          key: ${{ secrets.PRODUCTION_KEY }}
+          port: ${{ secrets.PRODUCTION_PORT }}
+          script: |
+            sudo docker pull wordrelayadmin/word-relay:latest
+            sudo docker stop wordrelay-server
+            sudo docker rm wordrelay-server
+            sudo docker run -d -p 8080:8080 --name wordrelay-server wordrelayadmin/word-relay:latest
 
   dependency-submission:
     needs: build
@@ -66,3 +80,5 @@ jobs:
 
       - name: Generate and submit dependency graph
         uses: gradle/actions/dependency-submission@v4
+        with:
+          build-root-directory: server
