@@ -1,7 +1,8 @@
 # Word-Relay 프로젝트를 위한 Dockerfile
 
 # 빌드 스테이지: Spring Boot 서버 빌드
-FROM arm64v8/eclipse-temurin:17-alpine AS build
+ARG TARGETPLATFORM
+FROM --platform=$TARGETPLATFORM eclipse-temurin:17-jdk-alpine AS build
 
 # 작업 디렉토리 설정
 WORKDIR /app
@@ -16,7 +17,7 @@ RUN chmod +x ./gradlew
 RUN ./gradlew build -x test --no-daemon
 
 # 실행 스테이지: 최종 이미지 생성
-FROM eclipse-temurin:17-jre-alpine
+FROM --platform=$TARGETPLATFORM eclipse-temurin:17-jdk-alpine 
 
 # 작업 디렉토리 설정
 WORKDIR /app
