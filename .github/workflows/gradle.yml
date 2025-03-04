@@ -17,6 +17,8 @@ jobs:
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
+        with:
+          platforms: all
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
@@ -31,11 +33,10 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           context: server
-          platforms: linux/arm64
+          platforms: linux/arm64  # ARM64 아키텍처 명시
           push: true
           tags: wordrelayadmin/word-relay:latest
           build-args: BASE_IMAGE=eclipse-temurin:17-jdk-alpine
-
 
 
   docker-deploy:

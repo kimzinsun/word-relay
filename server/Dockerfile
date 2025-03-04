@@ -32,6 +32,3 @@ EXPOSE 8080
 
 # 애플리케이션 실행
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]
-
-ARG BASE_IMAGE=eclipse-temurin:17-jdk-alpine
-FROM $BASE_IMAGE
