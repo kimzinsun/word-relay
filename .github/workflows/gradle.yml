@@ -1,48 +1,67 @@
 name: Java CI with Gradle
-
 on:
   push:
     branches: [ "main", "ci-cd" ]
   pull_request:
     branches: [ "main", "ci-cd" ]
-
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 1  # 빠른 체크아웃을 위해 히스토리 제한
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'gradle'  # Gradle 캐시 활성화
+
+      - name: Cache Docker layers
+        uses: actions/cache@v3
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
 
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v2
+        uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+        uses: docker/setup-buildx-action@v3
+        with:
+          buildkitd-flags: --debug
 
       - name: Login to Docker Hub
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
 
-      - name: Build and push x86_64 Docker image
-        uses: docker/build-push-action@v4
+      - name: Build and push ARM64 Docker image
+        uses: docker/build-push-action@v5  # 최신 버전 사용
         with:
           context: server
-          platforms: linux/amd64
+          platforms: linux/arm64
           push: true
           tags: wordrelayadmin/word-relay:latest
-          build-args: TARGETPLATFORM=linux/amd64
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
+          provenance: false  # 불필요한 프로비넌스 생성 비활성화
+          sbom: false  # SBOM 생성 비활성화
 
+      # 캐시 최적화를 위한 트릭
+      - name: Move cache
+        run: |
+          rm -rf /tmp/.buildx-cache
+          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
 
-
-
-  docker-deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
       - name: Deploy to production
         uses: appleboy/ssh-action@master
         with:
@@ -52,12 +71,11 @@ jobs:
           port: ${{ secrets.PRODUCTION_PORT }}
           script: |
             sudo docker pull wordrelayadmin/word-relay:latest
-            sudo docker stop wordrelay-server
-            sudo docker rm wordrelay-server
+            sudo docker stop wordrelay-server || true
+            sudo docker rm wordrelay-server || true
             sudo docker run -d -p 8080:8080 --name wordrelay-server wordrelayadmin/word-relay:latest
-
+            
   dependency-submission:
-    needs: build
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -66,19 +84,12 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
-
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
           cache: 'gradle'
-
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.5'
-
       - name: Generate and submit dependency graph
         uses: gradle/actions/dependency-submission@v4
         with:
