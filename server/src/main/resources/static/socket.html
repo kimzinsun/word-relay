@@ -79,6 +79,7 @@
   let socket;
   let stompClient;
   let sessionId;
+  let browserId = getBrowserId();
 
   // 브라우저 ID 관리
   function getBrowserId() {
@@ -97,6 +98,7 @@
     messageDiv.textContent = message;
     document.getElementById('messages').appendChild(messageDiv);
     // 자동 스크롤
+    const messages = document.getElementById('messages');
     messages.scrollTop = messages.scrollHeight;
   }
 
@@ -106,20 +108,45 @@
     stompClient = Stomp.over(socket);
 
     stompClient.connect({}, function(frame) {
-      sessionId = frame.headers['session'];
+      sessionId = frame.headers['session-id'];
       document.getElementById('wordInput').style.display = 'block';
 
-      // 웰컴 메시지 구독
-      stompClient.subscribe('/user/queue/welcome', function(message) {
-        const welcomeData = JSON.parse(message.body);
-        document.getElementById('nickname').textContent = '닉네임: ' + welcomeData.nickname;
-        document.getElementById('score').textContent = '점수: ' + welcomeData.score;
-        appendMessage('게임에 접속했습니다. 환영합니다, ' + welcomeData.nickname + '님!');
+      // 웰컴 메시지 구독 - 개인 메시지 수신을 위한 구독
+      stompClient.subscribe('/user/queue/private', (message) => {
+        console.log("📢 Received Private Message: ", message.body);
+
+        try {
+          const data = JSON.parse(message.body);
+          console.log("🎉 Private Message Content: ", data);
+          appendMessage(`${data.nickname}: ${data.message}`, 'system');
+        } catch (error) {
+          console.error("❌ JSON 파싱 오류:", error);
+        }
+      });
+
+      // 일반 웰컴 메시지 구독
+      stompClient.subscribe('/topic/welcome', (message) => {
+        console.log("📢 Received Welcome Message: ", message.body);
+
+        try {
+          const data = JSON.parse(message.body);
+          console.log("🎉 Welcome Message Content: ", data);
+
+          if (data.browserId === browserId) {
+            appendMessage(`🎉 ${data.message}`, 'system');
+
+            // ✅ 닉네임과 점수 업데이트
+            document.getElementById('nickname').textContent = `닉네임: ${data.nickname}`;
+            document.getElementById('score').textContent = `점수: ${data.score}`;
+          }
+        } catch (error) {
+          console.error("❌ JSON 파싱 오류:", error);
+        }
       });
 
       // 게임 접속 메시지 전송
       stompClient.send("/app/game.connect", {}, JSON.stringify({
-        browserId: getBrowserId()
+        browserId: browserId
       }));
     });
   }
@@ -130,8 +157,12 @@
     if (word === '') {
       return;
     }
+
+    appendMessage(`나: ${word}`, 'user-message');
+    document.getElementById('messageInput').value = '';
+
     stompClient.send("/app/game.word", {}, JSON.stringify({
-      sessionId: sessionId,
+      browserId: browserId,
       word: word
     }));
   };
