@@ -18,7 +18,7 @@ spring:
 
 
 mybatis:
-  mapper-locations: classpath*:mapper/*.xml
+  mapper-locations: classpath*:mappers/*.xml
   type-aliases-package: com.wordrelay.server.dto
   configuration:
     map-underscore-to-camel-case: true
