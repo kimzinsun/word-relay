@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
+import java.util.Optional;
 
 @Service
 @Slf4j
@@ -31,58 +32,34 @@ public class GameService {
       throw new CustomException(ErrorCode.BROWSER_ID_MISSING.getCode(), ErrorCode.BROWSER_ID_MISSING.getMessage());
     }
 
-    String nickname = redisTemplate.opsForValue().get(USER_BROWSER_KEY + browserId);
+    String nickname = Optional.of(redisTemplate.opsForValue().get(USER_BROWSER_KEY + browserId))
+        .orElseGet(() -> {
+            String newNickname = NicknameGenerator.generateRandomNickname();
+            redisTemplate.opsForValue().set(USER_BROWSER_KEY + browserId, newNickname);
+            redisTemplate.opsForZSet().add(USER_SET_KEY, newNickname, 0);
+            return newNickname;
+        });
 
-    if (nickname == null) {
-      nickname = NicknameGenerator.generateRandomNickname();
-      redisTemplate.opsForValue().set(USER_BROWSER_KEY + browserId, nickname);
-      redisTemplate.opsForZSet().add(USER_SET_KEY, nickname, 0);
-    }
-
-    // Get current score
-    Double score = redisTemplate.opsForZSet().score(USER_SET_KEY, nickname);
-    int userScore = (score != null) ? score.intValue() : 0;
-
-    // Send welcome message to the specific user
-    Map<String, Object> welcomeMessage = Map.of(
-        "message", "Welcome to the game, " + nickname + "! 🎉",
-        "nickname", nickname,
-        "score", userScore,
-        "browserId", browserId
-    );
-
-    // Send to public channel with browser ID for filtering
-    messagingTemplate.convertAndSend("/topic/welcome", welcomeMessage);
-
-    // Also send a private message
-    handleSendMessage("System", "Welcome to the game, " + nickname + "! You can start playing now.", nickname);
+    sendWelcomeMessage(browserId, nickname);
 
     return nickname;
   }
 
-  public void handleSendMessage(String senderNickname, String message, String targetNickname) {
-    if (targetNickname == null) {
-      throw new CustomException(ErrorCode.USER_NOT_FOUND.getCode(), ErrorCode.USER_NOT_FOUND.getMessage());
-    }
+  private void sendWelcomeMessage(String browserId, String nickname) {
+    Double score = redisTemplate.opsForZSet().score(USER_SET_KEY, nickname);
+    int userScore = score.intValue();
+    handleSendMessage(nickname, userScore, browserId);
+  }
 
-    Map<String, Object> messagePayload = Map.of(
-        "nickname", senderNickname,
-        "message", message
+  public void handleSendMessage(String nickname, int score, String browserId) {
+    Map<String, Object> welcomeMessage = Map.of(
+        "message", "Welcome to the game, " + nickname + "! 🎉",
+        "nickname", nickname,
+        "score", score,
+        "browserId", browserId
     );
 
-    messagingTemplate.convertAndSendToUser(targetNickname, "/queue/private", messagePayload);
+    messagingTemplate.convertAndSend("/topic/welcome", welcomeMessage);
   }
 
-  public void handleWordSubmission(String browserId, String word) {
-    String nickname = redisTemplate.opsForValue().get(USER_BROWSER_KEY + browserId);
-
-    if (nickname == null) {
-      throw new CustomException(ErrorCode.USER_NOT_FOUND.getCode(), ErrorCode.USER_NOT_FOUND.getMessage());
-    }
-
-    // Game logic for word validation would go here
-
-    // Example response
-    handleSendMessage("System", "You submitted: " + word, nickname);
-  }
 }
