@@ -18,13 +18,16 @@ public class GameService {
   private final RedisTemplate<String, String> redisTemplate;
   private final SimpMessagingTemplate messagingTemplate;
 
+  private final NicknameGenerator nicknameGenerator;
+
   private static final String USER_SET_KEY = "game:users";
   private static final String USER_BROWSER_KEY = "game:user_";
 
   public GameService(@Qualifier("redisTemplateSession") RedisTemplate<String, String> redisTemplate,
-      SimpMessagingTemplate messagingTemplate) {
+      SimpMessagingTemplate messagingTemplate, NicknameGenerator nicknameGenerator) {
     this.redisTemplate = redisTemplate;
     this.messagingTemplate = messagingTemplate;
+    this.nicknameGenerator = nicknameGenerator;
   }
 
   public String handleUserConnection(String browserId) {
@@ -32,14 +35,13 @@ public class GameService {
       throw new CustomException(ErrorCode.BROWSER_ID_MISSING.getCode(), ErrorCode.BROWSER_ID_MISSING.getMessage());
     }
 
-    String nickname = Optional.of(redisTemplate.opsForValue().get(USER_BROWSER_KEY + browserId))
-        .orElseGet(() -> {
-            String newNickname = NicknameGenerator.generateRandomNickname();
-            redisTemplate.opsForValue().set(USER_BROWSER_KEY + browserId, newNickname);
-            redisTemplate.opsForZSet().add(USER_SET_KEY, newNickname, 0);
-            return newNickname;
-        });
 
+    String nickname = redisTemplate.opsForValue().get(USER_BROWSER_KEY + browserId);
+    if (nickname == null || nickname.isEmpty()) {
+      nickname = nicknameGenerator.generateRandomNickname();
+      redisTemplate.opsForValue().set(USER_BROWSER_KEY + browserId, nickname);
+      redisTemplate.opsForZSet().add(USER_SET_KEY, nickname, 0);
+    }
     sendWelcomeMessage(browserId, nickname);
 
     return nickname;
