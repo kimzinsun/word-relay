@@ -1,6 +1,7 @@
 package com.wordrelay.server.util;
 
 import com.wordrelay.server.mapper.WordMapper;
+import com.wordrelay.server.model.Word;
 import java.util.HashMap;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
@@ -17,7 +18,7 @@ public class HangulUtil {
     this.wordMapper = wordMapper;
   }
 
-  public boolean extractChoseong(String word) {
+  public Word getWord(String word) {
     char firstChar = word.charAt(0);
 
       int base = firstChar - 0xAC00;
@@ -29,7 +30,7 @@ public class HangulUtil {
       char choseong = choseongList[choseongIndex];
       CHOSEONG_TO_TABLE.get(choseong);
 
-      return wordMapper.selectWord(CHOSEONG_TO_TABLE.get(choseong), word);
+    return wordMapper.getWord(CHOSEONG_TO_TABLE.get(choseong), word);
 
   }
 

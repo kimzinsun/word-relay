@@ -2,7 +2,7 @@ package com.wordrelay.server.service;
 
 import com.wordrelay.server.common.response.ApiResponse;
 import com.wordrelay.server.dto.WordMessage;
-import com.wordrelay.server.mapper.WordMapper;
+import com.wordrelay.server.model.Word;
 import com.wordrelay.server.util.HangulUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -15,15 +15,14 @@ public class GameService {
 
   private final RedisTemplate<String, String> redisTemplate;
   private final HangulUtil hangulUtil;
-  private final WordMapper wordMapper;
+  private final UserService userService;
 
   public GameService(
       @Qualifier("redisTemplateCurrentWord") RedisTemplate<String, String> redisTemplate,
-      HangulUtil hangulUtil,
-      WordMapper wordMapper) {
+      HangulUtil hangulUtil, UserService userService) {
     this.redisTemplate = redisTemplate;
     this.hangulUtil = hangulUtil;
-    this.wordMapper = wordMapper;
+    this.userService = userService;
   }
 
 
@@ -35,18 +34,32 @@ public class GameService {
     char firstChar = message.charAt(0);
 
     if (lastChar != firstChar) {
-      log.info("Invalid word: {}", message);
       return ApiResponse.success("유효하지 않은 단어입니다.");
     }
 
-    if(!hangulUtil.extractChoseong(message)) {
-      log.info("Invalid word: {}", message);
+    Word wordData = hangulUtil.getWord(message);
+
+    if (wordData == null) {
       return ApiResponse.success("유효하지 않은 단어입니다.");
     }
 
+    if (Boolean.TRUE.equals(wordData.getWinningWord())) {
+      log.info("🎉 Winning word! 🎉");
 
-      redisTemplate.opsForValue().set("currentWord", message);
+      // TODO: 랜덤 단어 선택
+      redisTemplate.opsForValue().set("currentWord", "시작");
+      userService.addScore("browser_" + wordMessage.getBrowserId(), 50);
+
       return ApiResponse.success("Success");
+    }
+
+    log.info("👍 Correct word! 👍");
+
+    userService.addScore(wordMessage.getBrowserId(), 10);
+
+    redisTemplate.opsForValue().set("currentWord", message);
+    return ApiResponse.success("Success");
   }
+
 
 }
