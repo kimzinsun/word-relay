@@ -144,6 +144,18 @@
         }
       });
 
+      // 단어 브로드캐스트 메시지 구독
+      stompClient.subscribe('/topic/word', (message) => {
+        console.log("📢 Received Word Broadcast: ", message.body);
+        try {
+          const data = JSON.parse(message.body);
+          // ApiResponse의 data 필드에 브로드캐스트할 메시지가 있다고 가정
+          appendMessage(`Broadcast: ${data.data}`, 'system');
+        } catch (error) {
+          console.error("❌ JSON 파싱 오류:", error);
+        }
+      });
+
       // 게임 접속 메시지 전송
       stompClient.send("/app/game.connect", {}, JSON.stringify({
         browserId: browserId
@@ -161,9 +173,9 @@
     appendMessage(`나: ${word}`, 'user-message');
     document.getElementById('messageInput').value = '';
 
-    stompClient.send("/app/game.word", {}, JSON.stringify({
+    stompClient.send("/app/send.word", {}, JSON.stringify({
       browserId: browserId,
-      word: word
+      word: word   // <-- message → word 로 변경
     }));
   };
 
