@@ -59,4 +59,26 @@ public class RedisConfig {
 
         return redisTemplate;
     }
+
+    @Bean(name = "redisConnectionFactoryCurrentWord")
+    public RedisConnectionFactory redisConnectionFactoryCurrentWord() {
+        RedisStandaloneConfiguration redisStandaloneConfiguration = new RedisStandaloneConfiguration();
+
+        redisStandaloneConfiguration.setHostName(redisProperties.getHost());
+        redisStandaloneConfiguration.setPort(redisProperties.getPort());
+        redisStandaloneConfiguration.setDatabase(2);
+
+        return new LettuceConnectionFactory(redisStandaloneConfiguration);
+    }
+
+    @Bean(name = "redisTemplateCurrentWord")
+    public RedisTemplate<String, String> redisTemplateCurrentWord(@Qualifier("redisConnectionFactoryCurrentWord") RedisConnectionFactory redisConnectionFactoryCurrentWord) {
+        RedisTemplate<String, String> redisTemplate = new RedisTemplate<>();
+
+        redisTemplate.setConnectionFactory(redisConnectionFactoryCurrentWord);
+        redisTemplate.setKeySerializer(new StringRedisSerializer());
+        redisTemplate.setValueSerializer(new StringRedisSerializer());
+
+        return redisTemplate;
+    }
 }
