@@ -14,7 +14,9 @@ import org.springframework.stereotype.Service;
 @Slf4j
 public class SocketService {
 
-  private final RedisTemplate<String, String> redisTemplate;
+  private final RedisTemplate<String, String> redisTemplateSession;
+
+  private final RedisTemplate<String, String> redisTemplateLeaderBoard;
   private final SimpMessagingTemplate messagingTemplate;
 
   private final NicknameGenerator nicknameGenerator;
@@ -22,24 +24,27 @@ public class SocketService {
   private static final String USER_SET_KEY = "game:users";
   private static final String USER_BROWSER_KEY = "game:user_";
 
-  public SocketService(@Qualifier("redisTemplateSession") RedisTemplate<String, String> redisTemplate,
+  public SocketService(
+      @Qualifier("redisTemplateSession") RedisTemplate<String, String> redisTemplateSession,
+      @Qualifier("redisTemplateLeaderBoard") RedisTemplate<String, String> redisTemplateLeaderBoard,
       SimpMessagingTemplate messagingTemplate, NicknameGenerator nicknameGenerator) {
-    this.redisTemplate = redisTemplate;
+    this.redisTemplateSession = redisTemplateSession;
+    this.redisTemplateLeaderBoard = redisTemplateLeaderBoard;
     this.messagingTemplate = messagingTemplate;
     this.nicknameGenerator = nicknameGenerator;
   }
 
   public String handleUserConnection(String browserId) {
     if (browserId == null || browserId.isEmpty()) {
-      throw new CustomException(ErrorCode.BROWSER_ID_MISSING.getCode(), ErrorCode.BROWSER_ID_MISSING.getMessage());
+      throw new CustomException(ErrorCode.BROWSER_ID_MISSING.getCode(),
+          ErrorCode.BROWSER_ID_MISSING.getMessage());
     }
 
-
-    String nickname = redisTemplate.opsForValue().get(USER_BROWSER_KEY + browserId);
+    String nickname = redisTemplateSession.opsForValue().get(USER_BROWSER_KEY + browserId);
     if (nickname == null || nickname.isEmpty()) {
       nickname = nicknameGenerator.generateRandomNickname();
-      redisTemplate.opsForValue().set(USER_BROWSER_KEY + browserId, nickname);
-      redisTemplate.opsForZSet().add(USER_SET_KEY, nickname, 0);
+      redisTemplateSession.opsForValue().set(USER_BROWSER_KEY + browserId, nickname);
+      redisTemplateLeaderBoard.opsForZSet().add(USER_SET_KEY, browserId, 0);
     }
     sendWelcomeMessage(browserId, nickname);
 
@@ -47,18 +52,15 @@ public class SocketService {
   }
 
   private void sendWelcomeMessage(String browserId, String nickname) {
-    Double score = redisTemplate.opsForZSet().score(USER_SET_KEY, nickname);
+    Double score = redisTemplateLeaderBoard.opsForZSet().score(USER_SET_KEY, browserId);
     int userScore = score.intValue();
     handleSendMessage(nickname, userScore, browserId);
   }
 
   public void handleSendMessage(String nickname, int score, String browserId) {
-    Map<String, Object> welcomeMessage = Map.of(
-        "message", "Welcome to the game, " + nickname + "! 🎉",
-        "nickname", nickname,
-        "score", score,
-        "browserId", browserId
-    );
+    Map<String, Object> welcomeMessage = Map.of("message",
+        "Welcome to the game, " + nickname + "! 🎉", "nickname", nickname, "score", score,
+        "browserId", browserId);
 
     messagingTemplate.convertAndSend("/topic/welcome", welcomeMessage);
   }
