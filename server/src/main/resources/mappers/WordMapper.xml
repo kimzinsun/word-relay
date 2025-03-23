@@ -9,5 +9,11 @@
     WHERE word = #{word}
   </select>
 
+  <select id="getWord" resultType="com.wordrelay.server.model.Word">
+    SELECT *
+    FROM ${tableName}
+    WHERE word = #{word}
+  </select>
+
 
 </mapper>
