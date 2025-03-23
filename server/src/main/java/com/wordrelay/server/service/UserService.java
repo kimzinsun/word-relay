@@ -9,19 +9,16 @@ import org.springframework.stereotype.Service;
 @Slf4j
 public class UserService {
 
-  private final RedisTemplate<String, String> redisTemplate;
+  private final RedisTemplate<String, String> redisTemplateLeaderBoard;
 
   public UserService(
-      @Qualifier("redisTemplateLeaderBoard") RedisTemplate<String, String> redisTemplate) {
-    this.redisTemplate = redisTemplate;
+      @Qualifier("redisTemplateLeaderBoard") RedisTemplate<String, String> redisTemplateLeaderBoard) {
+    this.redisTemplateLeaderBoard = redisTemplateLeaderBoard;
   }
 
   public void addScore(String browserId, int score) {
 
-    log.info("Adding score to user: {}", browserId);
-    log.info("Score: {}", score);
-    redisTemplate.opsForZSet().incrementScore("game:users", browserId, score);
-    log.info("##########" + redisTemplate.opsForZSet().score("game:users", browserId));
+    redisTemplateLeaderBoard.opsForZSet().incrementScore("game:users", browserId, score);
 
   }
 

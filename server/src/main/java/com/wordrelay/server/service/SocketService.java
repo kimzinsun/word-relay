@@ -54,13 +54,12 @@ public class SocketService {
   private void sendWelcomeMessage(String browserId, String nickname) {
     Double score = redisTemplateLeaderBoard.opsForZSet().score(USER_SET_KEY, browserId);
     int userScore = score.intValue();
-    handleSendMessage(nickname, userScore, browserId);
+    handleSendMessage(nickname);
   }
 
-  public void handleSendMessage(String nickname, int score, String browserId) {
+  public void handleSendMessage(String nickname) {
     Map<String, Object> welcomeMessage = Map.of("message",
-        "Welcome to the game, " + nickname + "! 🎉", "nickname", nickname, "score", score,
-        "browserId", browserId);
+        "Welcome to the game, " + nickname + "! 🎉", "nickname", nickname);
 
     messagingTemplate.convertAndSend("/topic/welcome", welcomeMessage);
   }
