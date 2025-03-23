@@ -1,6 +1,7 @@
 package com.wordrelay.server.service;
 
 import com.wordrelay.server.common.response.ApiResponse;
+import com.wordrelay.server.common.response.SuccessCode;
 import com.wordrelay.server.dto.WordMessage;
 import com.wordrelay.server.model.Word;
 import com.wordrelay.server.util.HangulUtil;
@@ -13,14 +14,16 @@ import org.springframework.stereotype.Service;
 @Slf4j
 public class GameService {
 
-  private final RedisTemplate<String, String> redisTemplate;
+  private static final String CURRENT_WORD = "currentWord";
   private final HangulUtil hangulUtil;
   private final UserService userService;
+  private static final String BROWSER = "browser_";
+  private final RedisTemplate<String, String> redisTemplateCurrentWord;
 
   public GameService(
-      @Qualifier("redisTemplateCurrentWord") RedisTemplate<String, String> redisTemplate,
+      @Qualifier("redisTemplateCurrentWord") RedisTemplate<String, String> redisTemplateCurrentWord,
       HangulUtil hangulUtil, UserService userService) {
-    this.redisTemplate = redisTemplate;
+    this.redisTemplateCurrentWord = redisTemplateCurrentWord;
     this.hangulUtil = hangulUtil;
     this.userService = userService;
   }
@@ -28,37 +31,32 @@ public class GameService {
 
   public ApiResponse<String> sendWord(WordMessage wordMessage) {
     String message = wordMessage.getWord();
-    String currentWord = redisTemplate.opsForValue().get("currentWord");
+    String currentWord = redisTemplateCurrentWord.opsForValue().get(CURRENT_WORD);
 
     char lastChar = currentWord.charAt(currentWord.length() - 1);
     char firstChar = message.charAt(0);
 
     if (lastChar != firstChar) {
-      return ApiResponse.success("유효하지 않은 단어입니다.");
+      return ApiResponse.success(SuccessCode.WORD_INVALID.getMessage());
     }
 
     Word wordData = hangulUtil.getWord(message);
 
     if (wordData == null) {
-      return ApiResponse.success("유효하지 않은 단어입니다.");
+      return ApiResponse.success(SuccessCode.WORD_NOT_A_REAL_WORD.getMessage());
     }
 
     if (Boolean.TRUE.equals(wordData.getWinningWord())) {
-      log.info("🎉 Winning word! 🎉");
 
       // TODO: 랜덤 단어 선택
-      redisTemplate.opsForValue().set("currentWord", "시작");
-      userService.addScore("browser_" + wordMessage.getBrowserId(), 50);
+      redisTemplateCurrentWord.opsForValue().set(CURRENT_WORD, "시작");
+      userService.addScore(BROWSER + wordMessage.getBrowserId(), 50);
 
-      return ApiResponse.success("Success");
+      return ApiResponse.success(SuccessCode.WORD_VALID.getMessage());
     }
-
-    log.info("👍 Correct word! 👍");
-
     userService.addScore(wordMessage.getBrowserId(), 10);
-
-    redisTemplate.opsForValue().set("currentWord", message);
-    return ApiResponse.success("Success");
+    redisTemplateCurrentWord.opsForValue().set(CURRENT_WORD, message);
+    return ApiResponse.success(SuccessCode.WORD_VALID.getMessage());
   }
 
 
