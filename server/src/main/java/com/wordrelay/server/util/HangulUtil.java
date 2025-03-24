@@ -1,9 +1,11 @@
 package com.wordrelay.server.util;
 
+import com.wordrelay.server.common.exception.ErrorCode;
 import com.wordrelay.server.mapper.WordMapper;
 import com.wordrelay.server.model.Word;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -12,6 +14,17 @@ import org.springframework.stereotype.Component;
 @Component
 public class HangulUtil {
   private final WordMapper wordMapper;
+
+  private static final Set<String> ALLOWED_TABLES = Set.of(
+      "dict_g", "dict_gg", "dict_n", "dict_d", "dict_dd", "dict_r", "dict_m", "dict_b", "dict_bb",
+      "dict_s", "dict_ss", "dict_ng", "dict_j", "dict_jj", "dict_ch", "dict_k", "dict_t", "dict_p",
+      "dict_h"
+  );
+
+  public boolean isValidTableName(String tableName) {
+    return ALLOWED_TABLES.contains(tableName);
+  }
+
 
   @Autowired
   public HangulUtil(WordMapper wordMapper) {
@@ -28,9 +41,12 @@ public class HangulUtil {
           'ㅆ', 'ㅇ', 'ㅈ', 'ㅉ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ'
       };
       char choseong = choseongList[choseongIndex];
-      CHOSEONG_TO_TABLE.get(choseong);
 
-    return wordMapper.getWord(CHOSEONG_TO_TABLE.get(choseong), word);
+    if (!isValidTableName(CHOSEONG_TO_TABLE.get(choseong))) {
+      throw new IllegalArgumentException(ErrorCode.INVALID_TABLE_NAME.getMessage());
+    }
+
+      return wordMapper.getWord(CHOSEONG_TO_TABLE.get(choseong), word);
 
   }
 
