@@ -20,11 +20,18 @@ public class NicknameGenerator {
     }
 
     public String generateRandomNickname() {
-        int adjectiveIndex = (int) (Math.random() * 145);
-        int animalIndex = (int) (Math.random() * 50);
 
-        String adjective = adjectivesMapper.selectAdjective(adjectiveIndex);
-        String animal = animalsMapper.selectAnimal(animalIndex);
-        return adjective + " " + animal;
+        try {
+            int adjectiveIndex = java.util.concurrent.ThreadLocalRandom.current().nextInt(0, 145);
+            int animalIndex = java.util.concurrent.ThreadLocalRandom.current().nextInt(0, 50);
+
+            String adjective = adjectivesMapper.selectAdjective(adjectiveIndex);
+            String animal = animalsMapper.selectAnimal(animalIndex);
+
+            return adjective + " " + animal;
+        } catch (Exception e) {
+            return "행운의 동물🦄";
+        }
+
     }
 }
