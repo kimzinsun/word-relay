@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.wordrelay.server.mapper.WordMapper">
+
+  <select id="selectWord" resultType="boolean">
+    SELECT CASE WHEN COUNT(*) > 0 THEN true ELSE false END
+    FROM ${tableName}
+    WHERE word = #{word}
+  </select>
+
+  <select id="getWord" resultType="com.wordrelay.server.model.Word">
+    SELECT *
+    FROM ${tableName}
+    WHERE word = #{word}
+  </select>
+
+
+</mapper>

@@ -2,21 +2,27 @@ spring:
   application:
     name: server
 
+  config:
+    import: optional:file:.env[.properties]
+
   datasource:
     url: ${DB_URL}
     username: ${DB_USER}
     password: ${DB_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
-  config:
-    import: optional:file:.env[.properties]
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      repositories:
+        enabled: false
+
 
 mybatis:
-  mapper-locations: classpath*:mapper/*.xml
+  mapper-locations: classpath*:mappers/*.xml
   type-aliases-package: com.wordrelay.server.dto
   configuration:
     map-underscore-to-camel-case: true
     use-generated-keys: true
-
 
 logging:
   level:
