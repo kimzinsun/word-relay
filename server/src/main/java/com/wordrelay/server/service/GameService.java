@@ -1,5 +1,6 @@
 package com.wordrelay.server.service;
 
+import com.wordrelay.server.common.exception.ErrorCode;
 import com.wordrelay.server.common.response.ApiResponse;
 import com.wordrelay.server.common.response.SuccessCode;
 import com.wordrelay.server.dto.WordMessage;
@@ -37,13 +38,15 @@ public class GameService {
     char firstChar = message.charAt(0);
 
     if (lastChar != firstChar) {
-      return ApiResponse.success(SuccessCode.WORD_INVALID.getMessage());
+      return ApiResponse.error(ErrorCode.NOT_FOLLOWING_RULES.getCode(),
+          ErrorCode.NOT_FOLLOWING_RULES.getMessage());
     }
 
     Word wordData = hangulUtil.getWord(message);
 
     if (wordData == null) {
-      return ApiResponse.success(SuccessCode.WORD_NOT_A_REAL_WORD.getMessage());
+      return ApiResponse.error(ErrorCode.INVALID_WORD.getCode(),
+          ErrorCode.INVALID_WORD.getMessage());
     }
 
     if (Boolean.TRUE.equals(wordData.getWinningWord())) {
