@@ -19,7 +19,6 @@ public class GameService {
   private static final String CURRENT_WORD = "currentWord";
   private final HangulUtil hangulUtil;
   private final UserService userService;
-  private static final String BROWSER = "browser_";
   private final RedisTemplate<String, String> redisTemplateCurrentWord;
 
   public GameService(
@@ -54,7 +53,7 @@ public class GameService {
 
       // TODO: 랜덤 단어 선택
       redisTemplateCurrentWord.opsForValue().set(CURRENT_WORD, "시작");
-      userService.addScore(BROWSER + wordMessage.getBrowserId(), 50);
+      userService.addScore(wordMessage.getBrowserId(), 50);
 
       return ApiResponse.success(
           new WordResultResponse(true, "시작", SuccessCode.WORD_VALID.getMessage()));

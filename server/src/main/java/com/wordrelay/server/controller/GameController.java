@@ -17,8 +17,8 @@ public class GameController {
 
   private final GameService gameService;
 
-  @MessageMapping("/send.word")
-  @SendTo("/topic/word")
+  @MessageMapping("/send")
+  @SendTo("/game/word")
   public ApiResponse<WordResultResponse> sendWord(WordMessage wordMessage) {
     return gameService.sendWord(wordMessage);
   }

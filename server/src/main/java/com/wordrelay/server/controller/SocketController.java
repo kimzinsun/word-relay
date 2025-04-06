@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 public class SocketController {
   private final SocketService socketService;
 
-  @MessageMapping("/game.connect")
+  @MessageMapping("/connect")
   public void handleConnection(Map<String, Object> payload) {
     String browserId = (String) payload.get("browserId");
     socketService.handleUserConnection(browserId);
