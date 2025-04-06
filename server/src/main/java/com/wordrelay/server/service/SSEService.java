@@ -141,9 +141,7 @@ public class SSEService {
             return;
         }
 
-        emitters.forEach((browserId, emitter) -> {
-            sendScoreToUser(browserId);
-        });
+        emitters.forEach((browserId, emitter) -> sendScoreToUser(browserId));
     }
 
     /**
