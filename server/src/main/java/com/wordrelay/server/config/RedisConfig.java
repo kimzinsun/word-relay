@@ -16,8 +16,8 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
 public class RedisConfig {
     private final RedisProperties redisProperties;
 
-    @Bean(name = "redisConnectionFactoryLeaderBoard")
-    public RedisConnectionFactory redisConnectionFactoryLeaderBoard() {
+    @Bean(name = "redisConnectionFactoryRankings")
+    public RedisConnectionFactory redisConnectionFactoryRankings() {
         RedisStandaloneConfiguration redisStandaloneConfiguration = new RedisStandaloneConfiguration();
 
         redisStandaloneConfiguration.setHostName(redisProperties.getHost());
@@ -38,11 +38,11 @@ public class RedisConfig {
         return new LettuceConnectionFactory(redisStandaloneConfiguration);
     }
 
-    @Bean(name = "redisTemplateLeaderBoard")
-    public RedisTemplate<String, String> redisTemplateLeaderBoard(@Qualifier("redisConnectionFactoryLeaderBoard") RedisConnectionFactory redisConnectionFactoryLeaderBoard) {
+    @Bean(name = "redisTemplateRankings")
+    public RedisTemplate<String, String> redisTemplateRankings(@Qualifier("redisConnectionFactoryRankings") RedisConnectionFactory redisConnectionFactoryRankings) {
         RedisTemplate<String, String> redisTemplate = new RedisTemplate<>();
 
-        redisTemplate.setConnectionFactory(redisConnectionFactoryLeaderBoard);
+        redisTemplate.setConnectionFactory(redisConnectionFactoryRankings);
         redisTemplate.setKeySerializer(new StringRedisSerializer());
         redisTemplate.setValueSerializer(new StringRedisSerializer());
 

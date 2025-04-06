@@ -20,7 +20,7 @@ class RedisConfigTest {
     private RedisProperties redisProperties;
 
     @Autowired
-    @Qualifier("redisConnectionFactoryLeaderBoard")
+    @Qualifier("redisConnectionFactoryRankings")
     private RedisConnectionFactory redisConnectionFactoryLeaderBoard;
 
     @Autowired
@@ -28,8 +28,8 @@ class RedisConfigTest {
     private RedisConnectionFactory redisConnectionFactorySession;
 
     @Autowired
-    @Qualifier("redisTemplateLeaderBoard")
-    private RedisTemplate<String, String> redisTemplateLeaderBoard;
+    @Qualifier("redisTemplateRankings")
+    private RedisTemplate<String, String> redisTemplateRankings;
 
     @Autowired
     @Qualifier("redisTemplateSession")
@@ -53,11 +53,11 @@ class RedisConfigTest {
 
     @Test
     @DisplayName("리더보드용 RedisTemplate 설정 테스트")
-    void redisTemplateLeaderBoardTest() {
-        assertThat(redisTemplateLeaderBoard).isNotNull();
-        assertThat(redisTemplateLeaderBoard.getKeySerializer())
+    void redisTemplateRankingsTest() {
+        assertThat(redisTemplateRankings).isNotNull();
+        assertThat(redisTemplateRankings.getKeySerializer())
                 .isInstanceOf(StringRedisSerializer.class);
-        assertThat(redisTemplateLeaderBoard.getValueSerializer())
+        assertThat(redisTemplateRankings.getValueSerializer())
                 .isInstanceOf(StringRedisSerializer.class);
     }
 
@@ -81,7 +81,7 @@ class RedisConfigTest {
     @Test
     @DisplayName("리더보드와 세션의 RedisTemplate이 서로 다른 인스턴스인지 테스트")
     void differentRedisTemplatesTest() {
-        assertThat(redisTemplateLeaderBoard)
+        assertThat(redisTemplateRankings)
                 .isNotSameAs(redisTemplateSession);
     }
 
