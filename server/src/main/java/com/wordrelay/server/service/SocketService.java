@@ -16,7 +16,6 @@ import org.springframework.stereotype.Service;
 public class SocketService {
 
   private final RedisTemplate<String, String> redisTemplateSession;
-
   private final RedisTemplate<String, String> redisTemplateLeaderBoard;
   private final RedisTemplate<String, String> redisTemplateCurrentWord;
   private final SimpMessagingTemplate messagingTemplate;
