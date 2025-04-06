@@ -56,8 +56,8 @@ public class SocketService {
   private void sendWelcomeMessage(String browserId, String nickname) {
     String currentWord = redisTemplateCurrentWord.opsForValue().get("currentWord");
     Map<String, Object> currentWordInfo = Map.of("currentWord", currentWord);
-    messagingTemplate.convertAndSend("/topic/userInfo", new ConnectResponse(nickname, browserId));
-    messagingTemplate.convertAndSend("/topic/currentWord", currentWordInfo);
+    messagingTemplate.convertAndSend("/game/userInfo", new ConnectResponse(nickname, browserId));
+    messagingTemplate.convertAndSend("/game/currentWord", currentWordInfo);
   }
 
 
