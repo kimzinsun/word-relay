@@ -4,6 +4,7 @@ import com.wordrelay.server.common.exception.ErrorCode;
 import com.wordrelay.server.common.response.ApiResponse;
 import com.wordrelay.server.common.response.SuccessCode;
 import com.wordrelay.server.dto.WordMessage;
+import com.wordrelay.server.dto.WordResultResponse;
 import com.wordrelay.server.model.Word;
 import com.wordrelay.server.util.HangulUtil;
 import lombok.extern.slf4j.Slf4j;
@@ -30,7 +31,7 @@ public class GameService {
   }
 
 
-  public ApiResponse<String> sendWord(WordMessage wordMessage) {
+  public ApiResponse<WordResultResponse> sendWord(WordMessage wordMessage) {
     String message = wordMessage.getWord();
     String currentWord = redisTemplateCurrentWord.opsForValue().get(CURRENT_WORD);
 
@@ -55,12 +56,13 @@ public class GameService {
       redisTemplateCurrentWord.opsForValue().set(CURRENT_WORD, "시작");
       userService.addScore(BROWSER + wordMessage.getBrowserId(), 50);
 
-      return ApiResponse.success(SuccessCode.WORD_VALID.getMessage());
+      return ApiResponse.success(
+          new WordResultResponse(true, "시작", SuccessCode.WORD_VALID.getMessage()));
     }
     userService.addScore(wordMessage.getBrowserId(), 10);
     redisTemplateCurrentWord.opsForValue().set(CURRENT_WORD, message);
-    return ApiResponse.success(SuccessCode.WORD_VALID.getMessage());
+    return ApiResponse.success(
+        new WordResultResponse(true, message, SuccessCode.WORD_VALID.getMessage()));
+
   }
-
-
 }
