@@ -16,7 +16,7 @@ import org.springframework.stereotype.Service;
 public class SocketService {
 
   private final RedisTemplate<String, String> redisTemplateSession;
-  private final RedisTemplate<String, String> redisTemplateLeaderBoard;
+  private final RedisTemplate<String, String> redisTemplateRankings;
   private final RedisTemplate<String, String> redisTemplateCurrentWord;
   private final SimpMessagingTemplate messagingTemplate;
 
@@ -28,11 +28,11 @@ public class SocketService {
 
   public SocketService(
       @Qualifier("redisTemplateSession") RedisTemplate<String, String> redisTemplateSession,
-      @Qualifier("redisTemplateLeaderBoard") RedisTemplate<String, String> redisTemplateLeaderBoard,
+      @Qualifier("redisTemplateRankings") RedisTemplate<String, String> redisTemplateRankings,
       @Qualifier("redisTemplateCurrentWord") RedisTemplate<String, String> redisTemplateCurrentWord,
       SimpMessagingTemplate messagingTemplate, NicknameGenerator nicknameGenerator) {
     this.redisTemplateSession = redisTemplateSession;
-    this.redisTemplateLeaderBoard = redisTemplateLeaderBoard;
+    this.redisTemplateRankings = redisTemplateRankings;
     this.redisTemplateCurrentWord = redisTemplateCurrentWord;
     this.messagingTemplate = messagingTemplate;
     this.nicknameGenerator = nicknameGenerator;
@@ -48,7 +48,7 @@ public class SocketService {
     if (nickname == null || nickname.isEmpty()) {
       nickname = nicknameGenerator.generateRandomNickname();
       redisTemplateSession.opsForValue().set(browserId, nickname);
-      redisTemplateLeaderBoard.opsForZSet().add(USER_SET_KEY, browserId, 0);
+      redisTemplateRankings.opsForZSet().add(USER_SET_KEY, browserId, 0);
     }
     sendWelcomeMessage(browserId, nickname);
   }
