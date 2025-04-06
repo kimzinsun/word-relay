@@ -19,14 +19,16 @@ public class GameService {
   private static final String CURRENT_WORD = "currentWord";
   private final HangulUtil hangulUtil;
   private final UserService userService;
+  private final SSEService sseService;
   private final RedisTemplate<String, String> redisTemplateCurrentWord;
 
   public GameService(
       @Qualifier("redisTemplateCurrentWord") RedisTemplate<String, String> redisTemplateCurrentWord,
-      HangulUtil hangulUtil, UserService userService) {
+      HangulUtil hangulUtil, UserService userService, SSEService sseService) {
     this.redisTemplateCurrentWord = redisTemplateCurrentWord;
     this.hangulUtil = hangulUtil;
     this.userService = userService;
+      this.sseService = sseService;
   }
 
 
@@ -59,6 +61,7 @@ public class GameService {
           new WordResultResponse(true, "시작", SuccessCode.WORD_VALID.getMessage()));
     }
     userService.addScore(wordMessage.getBrowserId(), 10);
+    sseService.broadcastScores();
     redisTemplateCurrentWord.opsForValue().set(CURRENT_WORD, message);
     return ApiResponse.success(
         new WordResultResponse(true, message, SuccessCode.WORD_VALID.getMessage()));
