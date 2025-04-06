@@ -2,14 +2,15 @@ package com.wordrelay.server.controller;
 
 import com.wordrelay.server.common.response.ApiResponse;
 import com.wordrelay.server.dto.WordMessage;
+import com.wordrelay.server.dto.WordResultResponse;
 import com.wordrelay.server.service.GameService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.SendTo;
-import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.RestController;
 
-@Controller
+@RestController
 @Slf4j
 @RequiredArgsConstructor
 public class GameController {
@@ -18,13 +19,8 @@ public class GameController {
 
   @MessageMapping("/send.word")
   @SendTo("/topic/word")
-  public ApiResponse<String> sendWord(WordMessage wordMessage) {
-    log.info("Received word: {}", wordMessage.getWord());
+  public ApiResponse<WordResultResponse> sendWord(WordMessage wordMessage) {
     return gameService.sendWord(wordMessage);
-//    gameService.handleWord(wordMessage.getMessage(), wordMessage.getBrowserId());
-//    return ApiResponse.success("Success");
   }
-
-
 
 }
