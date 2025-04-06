@@ -24,7 +24,6 @@ public class SocketService {
   private final NicknameGenerator nicknameGenerator;
 
   private static final String USER_SET_KEY = "game:users";
-  private static final String USER_BROWSER_KEY = "game:user_";
   private static final String CURRENT_WORD = "currentWord";
 
 
@@ -46,10 +45,10 @@ public class SocketService {
           ErrorCode.BROWSER_ID_MISSING.getMessage());
     }
 
-    String nickname = redisTemplateSession.opsForValue().get(USER_BROWSER_KEY + browserId);
+    String nickname = redisTemplateSession.opsForValue().get(browserId);
     if (nickname == null || nickname.isEmpty()) {
       nickname = nicknameGenerator.generateRandomNickname();
-      redisTemplateSession.opsForValue().set(USER_BROWSER_KEY + browserId, nickname);
+      redisTemplateSession.opsForValue().set(browserId, nickname);
       redisTemplateLeaderBoard.opsForZSet().add(USER_SET_KEY, browserId, 0);
     }
     sendWelcomeMessage(browserId, nickname);
